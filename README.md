@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/M-Endymion/cross-platform-client-health/main/thumbnail.png" alt="Cross-Platform Client Health" width="100%" />
+  <img src="https://raw.githubusercontent.com/M-Endymion/cross-platform-client-health/main/thumbnail-crosshealth.png" alt="Cross-Platform Client Health" width="100%" />
 </div>
 
 <br>
