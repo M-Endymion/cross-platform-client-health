@@ -1,0 +1,7 @@
+{
+  "disk_threshold_gb": 20,
+  "memory_warning_percent": 85,
+  "cpu_warning_percent": 80,
+  "output_dir": "reports",
+  "include_mecm_check": true
+}
