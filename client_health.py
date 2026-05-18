@@ -35,6 +35,7 @@ def check_disk_space(threshold_gb=20):
         free_gb = free / (1024**3)
         return {
             "free_gb": round(free_gb, 1),
+            "used_percent": round(used / total * 100, 1),
             "status": "Good" if free_gb > threshold_gb else "Warning",
             "threshold_gb": threshold_gb
         }
@@ -52,6 +53,14 @@ def check_memory():
         "status": "Good" if mem.percent < 85 else "Warning"
     }
 
+def check_cpu():
+    if not PSUTIL_AVAILABLE:
+        return {"status": "psutil not installed"}
+    return {
+        "percent_used": psutil.cpu_percent(interval=1),
+        "status": "Good" if psutil.cpu_percent(interval=1) < 80 else "Warning"
+    }
+
 def generate_html_report(data, output_path):
     html = f"""<!DOCTYPE html>
 <html>
@@ -64,11 +73,13 @@ def generate_html_report(data, output_path):
     table {{ border-collapse: collapse; width: 100%; margin: 20px 0; }}
     th, td {{ border: 1px solid #ddd; padding: 12px; text-align: left; }}
     th {{ background: #0078D4; color: white; }}
+    .status-good {{ background: #d4edda; }}
+    .status-warning {{ background: #fff3cd; }}
 </style>
 </head>
 <body>
     <h1>Client Health Report</h1>
-    <p>Generated: {data['system']['timestamp']}</p>
+    <p><strong>Generated:</strong> {data['system']['timestamp']}</p>
     
     <h2>System Information</h2>
     <table>
@@ -81,13 +92,19 @@ def generate_html_report(data, output_path):
     <h2>Disk Space</h2>
     <table>
         <tr><th>Metric</th><th>Value</th><th>Status</th></tr>
-        <tr><td>Free Space</td><td>{data['disk'].get('free_gb', 'N/A')} GB</td><td>{data['disk'].get('status', 'N/A')}</td></tr>
+        <tr><td>Free Space</td><td>{data['disk'].get('free_gb', 'N/A')} GB</td><td class="status-{data['disk'].get('status','').lower()}">{data['disk'].get('status', 'N/A')}</td></tr>
     </table>
     
     <h2>Memory</h2>
     <table>
         <tr><th>Metric</th><th>Value</th><th>Status</th></tr>
-        <tr><td>Used</td><td>{data['memory'].get('percent_used', 'N/A')}%</td><td>{data['memory'].get('status', 'N/A')}</td></tr>
+        <tr><td>Used</td><td>{data['memory'].get('percent_used', 'N/A')}%</td><td class="status-{data['memory'].get('status','').lower()}">{data['memory'].get('status', 'N/A')}</td></tr>
+    </table>
+    
+    <h2>CPU</h2>
+    <table>
+        <tr><th>Metric</th><th>Value</th><th>Status</th></tr>
+        <tr><td>Usage (last 1s)</td><td>{data['cpu'].get('percent_used', 'N/A')}%</td><td class="status-{data['cpu'].get('status','').lower()}">{data['cpu'].get('status', 'N/A')}</td></tr>
     </table>
 </body>
 </html>"""
@@ -105,17 +122,16 @@ def main():
         "system": get_system_info(),
         "disk": check_disk_space(),
         "memory": check_memory(),
+        "cpu": check_cpu(),
     }
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M")
     base_name = f"health_{report['system']['hostname']}_{timestamp}"
 
-    # Save JSON
     json_path = Path(args.output) / f"{base_name}.json"
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2)
 
-    # Save HTML
     html_path = Path(args.output) / f"{base_name}.html"
     generate_html_report(report, html_path)
 
