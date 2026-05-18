@@ -36,8 +36,7 @@ def check_disk_space(threshold_gb=20):
         return {
             "free_gb": round(free_gb, 1),
             "used_percent": round(used / total * 100, 1),
-            "status": "Good" if free_gb > threshold_gb else "Warning",
-            "threshold_gb": threshold_gb
+            "status": "Good" if free_gb > threshold_gb else "Warning"
         }
     except:
         return {"status": "Unknown"}
@@ -60,6 +59,28 @@ def check_cpu():
         "percent_used": psutil.cpu_percent(interval=1),
         "status": "Good" if psutil.cpu_percent(interval=1) < 80 else "Warning"
     }
+
+def check_mecm_client():
+    """Windows-specific MECM/SCCM client checks"""
+    if platform.system() != "Windows":
+        return {"status": "Not applicable (non-Windows)"}
+    
+    try:
+        import winreg
+        ccm_path = r"SOFTWARE\Microsoft\CCM"
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, ccm_path) as key:
+            version = winreg.QueryValueEx(key, "ProductVersion")[0]
+            return {
+                "installed": True,
+                "version": version,
+                "status": "Good"
+            }
+    except:
+        return {
+            "installed": False,
+            "status": "Not Found",
+            "note": "MECM/SCCM client not detected"
+        }
 
 def generate_html_report(data, output_path):
     html = f"""<!DOCTYPE html>
@@ -85,7 +106,7 @@ def generate_html_report(data, output_path):
     <table>
         <tr><th>Property</th><th>Value</th></tr>
         <tr><td>Hostname</td><td>{data['system']['hostname']}</td></tr>
-        <tr><td>Operating System</td><td>{data['system']['os']} {data['system']['os_release']}</td></tr>
+        <tr><td>OS</td><td>{data['system']['os']} {data['system']['os_release']}</td></tr>
         <tr><td>Architecture</td><td>{data['system']['architecture']}</td></tr>
     </table>
     
@@ -95,16 +116,17 @@ def generate_html_report(data, output_path):
         <tr><td>Free Space</td><td>{data['disk'].get('free_gb', 'N/A')} GB</td><td class="status-{data['disk'].get('status','').lower()}">{data['disk'].get('status', 'N/A')}</td></tr>
     </table>
     
-    <h2>Memory</h2>
+    <h2>Memory & CPU</h2>
     <table>
-        <tr><th>Metric</th><th>Value</th><th>Status</th></tr>
-        <tr><td>Used</td><td>{data['memory'].get('percent_used', 'N/A')}%</td><td class="status-{data['memory'].get('status','').lower()}">{data['memory'].get('status', 'N/A')}</td></tr>
+        <tr><th>Component</th><th>Value</th><th>Status</th></tr>
+        <tr><td>Memory Used</td><td>{data['memory'].get('percent_used', 'N/A')}%</td><td class="status-{data['memory'].get('status','').lower()}">{data['memory'].get('status', 'N/A')}</td></tr>
+        <tr><td>CPU Used</td><td>{data['cpu'].get('percent_used', 'N/A')}%</td><td class="status-{data['cpu'].get('status','').lower()}">{data['cpu'].get('status', 'N/A')}</td></tr>
     </table>
     
-    <h2>CPU</h2>
+    <h2>MECM/SCCM Client</h2>
     <table>
-        <tr><th>Metric</th><th>Value</th><th>Status</th></tr>
-        <tr><td>Usage (last 1s)</td><td>{data['cpu'].get('percent_used', 'N/A')}%</td><td class="status-{data['cpu'].get('status','').lower()}">{data['cpu'].get('status', 'N/A')}</td></tr>
+        <tr><th>Status</th><th>Details</th></tr>
+        <tr><td>{'✅ Installed' if data['mecm'].get('installed') else '❌ Not Found'}</td><td>{data['mecm'].get('version', data['mecm'].get('note', ''))}</td></tr>
     </table>
 </body>
 </html>"""
@@ -123,6 +145,7 @@ def main():
         "disk": check_disk_space(),
         "memory": check_memory(),
         "cpu": check_cpu(),
+        "mecm": check_mecm_client(),
     }
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M")
