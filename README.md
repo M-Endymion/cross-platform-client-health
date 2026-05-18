@@ -50,6 +50,21 @@ python client_health.py
 
 ---
 
+## How to Extend
+
+This tool is designed to be easy to customize:
+
+- Add new checks in `client_health.py` (CPU temperature, service status, application versions, etc.)
+- Modify thresholds in `config.json`
+- Extend the HTML report by editing `generate_html_report()`
+- Windows-specific features (MECM client, registry checks, WMI queries) can be added easily
+
+**Example ideas:**
+- Intune compliance check (macOS/Windows)
+- Pending reboot detection
+- Top running processes
+- Network connectivity test
+
 ### Roadmap
 
 - Windows-specific MECM/SCCM client checks
